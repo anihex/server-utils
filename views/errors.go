@@ -2,6 +2,7 @@ package views
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"path/filepath"
 	"runtime"
@@ -72,15 +73,14 @@ func prepContext(r *http.Request, err error) (*http.Request, bool) {
 	return res, true
 }
 
-// ErrAccessDenied sends an error message with "Forbidden" as it's status code.
-// It also sends a JSON Object with the error-message "ERR_FORBIDDEN".
-// If the context of the request contains an error message, it will be displayed
-// instead of the regular "Forbidden".
-func ErrAccessDenied(w http.ResponseWriter, r *http.Request) {
+// AccessDeniedWithErr sends an error message with "Forbidden" as it's
+// status code. It also sends a JSON Object with the error-message
+// "ERR_FORBIDDEN".
+// The error message will be displayed in the log.
+func AccessDeniedWithErr(w http.ResponseWriter, r *http.Request, err error) {
 	data := []byte(`{ "error": "ERR_FORBIDDEN" }`)
 
 	skip := getSkipFile(r)
-	err := getErr(r, "Forbidden")
 	elapsedTime := getTime(r)
 
 	_, filename, line, _ := runtime.Caller(skip)
@@ -107,13 +107,22 @@ func ErrAccessDenied(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ErrAccessDenied sends an error message with "Forbidden" as it's status code.
+// It also sends a JSON Object with the error-message "ERR_FORBIDDEN".
+// If the context of the request contains an error message, it will be displayed
+// instead of the regular "Forbidden".
+func ErrAccessDenied(w http.ResponseWriter, r *http.Request) {
+	AccessDeniedWithErr(w, r, errors.New("Forbidden"))
+}
+
 // AccessDeniedIfErr send an ERR_FORBIDDEN to the client IF the passed err is
 // not nil. In this case error will be placed into the context and logged.
 // If a Response was send, the result will be true to indicate, that no further
 // request handling is necessary.
 func AccessDeniedIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
-	if res, ok := prepContext(r, err); ok {
-		ErrAccessDenied(w, res)
+	if err != nil {
+		prepContext(r, err)
+		AccessDeniedWithErr(w, r, err)
 		return true
 	}
 
