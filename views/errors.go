@@ -354,15 +354,13 @@ func InvalidMediaTypeIfErr(w http.ResponseWriter, r *http.Request, err error) bo
 	return false
 }
 
-// ErrBadRequest sends an error message with "Bad Request" as it's status code.
+// BadRequestWithErr sends an error message with "Bad Request" as it's status code.
 // It also sends a JSON Object with the error-message "ERR_BAD_REQUEST".
-// If the context of the request contains an error message, it will be displayed
-// instead of the regular "Forbidden".
-func ErrBadRequest(w http.ResponseWriter, r *http.Request) {
+// The error message will be displayed in the log.
+func BadRequestWithErr(w http.ResponseWriter, r *http.Request, err error) {
 	data := []byte(`{ "error": "ERR_BAD_REQUEST" }`)
 
 	skip := getSkipFile(r)
-	err := getErr(r, "Bad Request")
 	elapsedTime := getTime(r)
 
 	_, filename, line, _ := runtime.Caller(skip)
@@ -389,13 +387,22 @@ func ErrBadRequest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ErrBadRequest sends an error message with "Bad Request" as it's status code.
+// It also sends a JSON Object with the error-message "ERR_BAD_REQUEST".
+// If the context of the request contains an error message, it will be displayed
+// instead of the regular "Forbidden".
+func ErrBadRequest(w http.ResponseWriter, r *http.Request) {
+	BadRequestWithErr(w, r, errors.New("Bad Request"))
+}
+
 // BadRequestIfErr send an ERR_BAD_REQUEST to the client IF the passed err is
 // not nil. In this case error will be placed into the context and logged.
 // If a Response was send, the result will be true to indicate, that no further
 // request handling is necessary.
 func BadRequestIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
-	if res, ok := prepContext(r, err); ok {
-		ErrBadRequest(w, res)
+	if err != nil {
+		prepContext(r, err)
+		BadRequestWithErr(w, r, err)
 		return true
 	}
 
