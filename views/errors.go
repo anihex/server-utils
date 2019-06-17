@@ -277,7 +277,7 @@ func InvalidDataWithErr(w http.ResponseWriter, r *http.Request, err error) {
 // It also sends a JSON Object with the error-message "ERR_INVALID_DATA".
 // It uses the default error message for "Unprocessable Entity".
 func ErrInvalidData(w http.ResponseWriter, r *http.Request) {
-	InvalidDataWithErr(w, r, errors.New("Invalid Data"))
+	InvalidDataWithErr(w, r, errors.New("Unprocessable Entity"))
 }
 
 // InvalidDataIfErr send an ERR_INVALID_DATA to the client IF the passed err is
