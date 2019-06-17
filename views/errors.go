@@ -63,23 +63,17 @@ func prepContext(r *http.Request) *http.Request {
 	return res
 }
 
-// AccessDeniedWithErr sends an error message with "Forbidden" as it's
-// status code. It also sends a JSON Object with the error-message
-// "ERR_FORBIDDEN".
-// The error message will be displayed in the log.
-func AccessDeniedWithErr(w http.ResponseWriter, r *http.Request, err error) {
-	data := []byte(`{ "error": "ERR_FORBIDDEN" }`)
-
+func sendError(w http.ResponseWriter, r *http.Request, err error, status int, data []byte) {
 	skip := getSkipFile(r)
 	elapsedTime := getTime(r)
 
-	_, filename, line, _ := runtime.Caller(skip)
+	_, filename, line, _ := runtime.Caller(skip + 1)
 	filename = filepath.Base(filename)
 
 	RemoteAddr := tools.GetIP(r)
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusForbidden)
+	w.WriteHeader(status)
 	w.Write(data)
 
 	if !strings.HasPrefix(r.RequestURI, "/status") && TEST_MODE == false {
@@ -88,13 +82,23 @@ func AccessDeniedWithErr(w http.ResponseWriter, r *http.Request, err error) {
 			r.Method,
 			filename,
 			line,
-			http.StatusForbidden,
+			status,
 			RemoteAddr,
 			elapsedTime,
 			r.RequestURI,
 			err,
 		)
 	}
+}
+
+// AccessDeniedWithErr sends an error message with "Forbidden" as it's
+// status code. It also sends a JSON Object with the error-message
+// "ERR_FORBIDDEN".
+// The error message will be displayed in the log.
+func AccessDeniedWithErr(w http.ResponseWriter, r *http.Request, err error) {
+	data := []byte(`{ "error": "ERR_FORBIDDEN" }`)
+
+	sendError(w, r, err, http.StatusForbidden, data)
 }
 
 // ErrAccessDenied sends an error message with "Forbidden" as it's status code.
@@ -124,31 +128,7 @@ func AccessDeniedIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
 func NotFoundWithErr(w http.ResponseWriter, r *http.Request, err error) {
 	data := []byte(`{ "error": "ERR_NOT_FOUND" }`)
 
-	skip := getSkipFile(r)
-	elapsedTime := getTime(r)
-
-	_, filename, line, _ := runtime.Caller(skip)
-	filename = filepath.Base(filename)
-
-	RemoteAddr := tools.GetIP(r)
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusNotFound)
-	w.Write(data)
-
-	if !strings.HasPrefix(r.RequestURI, "/status") && TEST_MODE == false {
-		Logger.Printf(
-			"[%7s] [%s; Line %d] [JSON] [%d] [%s] [%v] %s (%s)",
-			r.Method,
-			filename,
-			line,
-			http.StatusNotFound,
-			RemoteAddr,
-			elapsedTime,
-			r.RequestURI,
-			err,
-		)
-	}
+	sendError(w, r, err, http.StatusNotFound, data)
 }
 
 // ErrNotFound sends an error message with "Not Found" as it's status code.
@@ -179,31 +159,7 @@ func NotFoundIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
 func ServerErrorWithErr(w http.ResponseWriter, r *http.Request, err error) {
 	data := []byte(`{ "error": "ERR_SERVER_ERROR" }`)
 
-	skip := getSkipFile(r)
-	elapsedTime := getTime(r)
-
-	_, filename, line, _ := runtime.Caller(skip)
-	filename = filepath.Base(filename)
-
-	RemoteAddr := tools.GetIP(r)
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusInternalServerError)
-	w.Write(data)
-
-	if !strings.HasPrefix(r.RequestURI, "/status") && TEST_MODE == false {
-		Logger.Printf(
-			"[%7s] [%s; Line %d] [JSON] [%d] [%s] [%v] %s (%s)",
-			r.Method,
-			filename,
-			line,
-			http.StatusInternalServerError,
-			RemoteAddr,
-			elapsedTime,
-			r.RequestURI,
-			err,
-		)
-	}
+	sendError(w, r, err, http.StatusInternalServerError, data)
 }
 
 // ErrServerError sends an error message with "Internal Server Error" as it's
@@ -235,31 +191,7 @@ func ServerErrorIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
 func InvalidDataWithErr(w http.ResponseWriter, r *http.Request, err error) {
 	data := []byte(`{ "error": "ERR_INVALID_DATA" }`)
 
-	skip := getSkipFile(r)
-	elapsedTime := getTime(r)
-
-	_, filename, line, _ := runtime.Caller(skip)
-	filename = filepath.Base(filename)
-
-	RemoteAddr := tools.GetIP(r)
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusUnprocessableEntity)
-	w.Write(data)
-
-	if !strings.HasPrefix(r.RequestURI, "/status") && TEST_MODE == false {
-		Logger.Printf(
-			"[%7s] [%s; Line %d] [JSON] [%d] [%s] [%v] %s (%s)",
-			r.Method,
-			filename,
-			line,
-			http.StatusUnprocessableEntity,
-			RemoteAddr,
-			elapsedTime,
-			r.RequestURI,
-			err,
-		)
-	}
+	sendError(w, r, err, http.StatusUnprocessableEntity, data)
 }
 
 // ErrInvalidData sends an error message with "Unprocessable Entity" as it's
@@ -291,31 +223,7 @@ func InvalidDataIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
 func InvalidMediaTypeWithErr(w http.ResponseWriter, r *http.Request, err error) {
 	data := []byte(`{ "error": "ERR_UNSUPPORTED_MEDIA_TYPE" }`)
 
-	skip := getSkipFile(r)
-	elapsedTime := getTime(r)
-
-	_, filename, line, _ := runtime.Caller(skip)
-	filename = filepath.Base(filename)
-
-	RemoteAddr := tools.GetIP(r)
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusUnsupportedMediaType)
-	w.Write(data)
-
-	if !strings.HasPrefix(r.RequestURI, "/status") && TEST_MODE == false {
-		Logger.Printf(
-			"[%7s] [%s; Line %d] [JSON] [%d] [%s] [%v] %s (%s)",
-			r.Method,
-			filename,
-			line,
-			http.StatusUnsupportedMediaType,
-			RemoteAddr,
-			elapsedTime,
-			r.RequestURI,
-			err,
-		)
-	}
+	sendError(w, r, err, http.StatusUnsupportedMediaType, data)
 }
 
 // ErrInvalidMediaType sends an error message with "Unsupported Media Type" as
@@ -346,31 +254,7 @@ func InvalidMediaTypeIfErr(w http.ResponseWriter, r *http.Request, err error) bo
 func BadRequestWithErr(w http.ResponseWriter, r *http.Request, err error) {
 	data := []byte(`{ "error": "ERR_BAD_REQUEST" }`)
 
-	skip := getSkipFile(r)
-	elapsedTime := getTime(r)
-
-	_, filename, line, _ := runtime.Caller(skip)
-	filename = filepath.Base(filename)
-
-	RemoteAddr := tools.GetIP(r)
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusBadRequest)
-	w.Write(data)
-
-	if !strings.HasPrefix(r.RequestURI, "/status") && TEST_MODE == false {
-		Logger.Printf(
-			"[%7s] [%s; Line %d] [JSON] [%d] [%s] [%v] %s (%s)",
-			r.Method,
-			filename,
-			line,
-			http.StatusBadRequest,
-			RemoteAddr,
-			elapsedTime,
-			r.RequestURI,
-			err,
-		)
-	}
+	sendError(w, r, err, http.StatusBadRequest, data)
 }
 
 // ErrBadRequest sends an error message with "Bad Request" as it's status code.
