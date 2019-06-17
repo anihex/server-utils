@@ -2,6 +2,7 @@ package views
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"path/filepath"
 	"runtime"
@@ -52,44 +53,27 @@ func getErr(r *http.Request, def string) string {
 }
 
 // preContext prepares the context for later use.
-// It takes a request and an error and checks if the error was nil.
-// If the error is not nil, the error gets stored inside the context and
-// the "skipFile" gets increased by one so that the final views can handle this.
-func prepContext(r *http.Request, err error) (*http.Request, bool) {
-	if err == nil {
-		return nil, false
-	}
-
+// It takes a request and increases the "toSkip" information by 1.
+func prepContext(r *http.Request) *http.Request {
 	skip := getSkipFile(r)
 	res := r.WithContext(
 		context.WithValue(r.Context(), toSkip, skip+1),
 	)
 
-	res = res.WithContext(
-		context.WithValue(res.Context(), gotError, err.Error()),
-	)
-
-	return res, true
+	return res
 }
 
-// ErrAccessDenied sends an error message with "Forbidden" as it's status code.
-// It also sends a JSON Object with the error-message "ERR_FORBIDDEN".
-// If the context of the request contains an error message, it will be displayed
-// instead of the regular "Forbidden".
-func ErrAccessDenied(w http.ResponseWriter, r *http.Request) {
-	data := []byte(`{ "error": "ERR_FORBIDDEN" }`)
-
+func sendError(w http.ResponseWriter, r *http.Request, err error, status int, data []byte) {
 	skip := getSkipFile(r)
-	err := getErr(r, "Forbidden")
 	elapsedTime := getTime(r)
 
-	_, filename, line, _ := runtime.Caller(skip)
+	_, filename, line, _ := runtime.Caller(skip + 1)
 	filename = filepath.Base(filename)
 
 	RemoteAddr := tools.GetIP(r)
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusForbidden)
+	w.WriteHeader(status)
 	w.Write(data)
 
 	if !strings.HasPrefix(r.RequestURI, "/status") && TEST_MODE == false {
@@ -98,13 +82,30 @@ func ErrAccessDenied(w http.ResponseWriter, r *http.Request) {
 			r.Method,
 			filename,
 			line,
-			http.StatusForbidden,
+			status,
 			RemoteAddr,
 			elapsedTime,
 			r.RequestURI,
 			err,
 		)
 	}
+}
+
+// AccessDeniedWithErr sends an error message with "Forbidden" as it's
+// status code. It also sends a JSON Object with the error-message
+// "ERR_FORBIDDEN".
+// The error message will be displayed in the log.
+func AccessDeniedWithErr(w http.ResponseWriter, r *http.Request, err error) {
+	data := []byte(`{ "error": "ERR_FORBIDDEN" }`)
+
+	sendError(w, r, err, http.StatusForbidden, data)
+}
+
+// ErrAccessDenied sends an error message with "Forbidden" as it's status code.
+// It also sends a JSON Object with the error-message "ERR_FORBIDDEN".
+// It uses the default error message for "Forbidden".
+func ErrAccessDenied(w http.ResponseWriter, r *http.Request) {
+	AccessDeniedWithErr(w, r, errors.New("Forbidden"))
 }
 
 // AccessDeniedIfErr send an ERR_FORBIDDEN to the client IF the passed err is
@@ -112,47 +113,29 @@ func ErrAccessDenied(w http.ResponseWriter, r *http.Request) {
 // If a Response was send, the result will be true to indicate, that no further
 // request handling is necessary.
 func AccessDeniedIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
-	if res, ok := prepContext(r, err); ok {
-		ErrAccessDenied(w, res)
+	if err != nil {
+		res := prepContext(r)
+		AccessDeniedWithErr(w, res, err)
 		return true
 	}
 
 	return false
 }
 
-// ErrNotFound sends an error message with "Not Found" as it's status code.
+// NotFoundWithErr sends an error message with "Not Found" as it's status code.
 // It also sends a JSON Object with the error-message "ERR_NOT_FOUND".
-// If the context of the request contains an error message, it will be displayed
-// instead of the regular "Forbidden".
-func ErrNotFound(w http.ResponseWriter, r *http.Request) {
+// The error message will be displayed in the log.
+func NotFoundWithErr(w http.ResponseWriter, r *http.Request, err error) {
 	data := []byte(`{ "error": "ERR_NOT_FOUND" }`)
 
-	skip := getSkipFile(r)
-	err := getErr(r, "Not Found")
-	elapsedTime := getTime(r)
+	sendError(w, r, err, http.StatusNotFound, data)
+}
 
-	_, filename, line, _ := runtime.Caller(skip)
-	filename = filepath.Base(filename)
-
-	RemoteAddr := tools.GetIP(r)
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusNotFound)
-	w.Write(data)
-
-	if !strings.HasPrefix(r.RequestURI, "/status") && TEST_MODE == false {
-		Logger.Printf(
-			"[%7s] [%s; Line %d] [JSON] [%d] [%s] [%v] %s (%s)",
-			r.Method,
-			filename,
-			line,
-			http.StatusNotFound,
-			RemoteAddr,
-			elapsedTime,
-			r.RequestURI,
-			err,
-		)
-	}
+// ErrNotFound sends an error message with "Not Found" as it's status code.
+// It also sends a JSON Object with the error-message "ERR_NOT_FOUND".
+// It uses the default error message for "Not Found".
+func ErrNotFound(w http.ResponseWriter, r *http.Request) {
+	NotFoundWithErr(w, r, errors.New("Not Found"))
 }
 
 // NotFoundIfErr send an ERR_NOT_FOUND to the client IF the passed err is
@@ -160,48 +143,31 @@ func ErrNotFound(w http.ResponseWriter, r *http.Request) {
 // If a Response was send, the result will be true to indicate, that no further
 // request handling is necessary.
 func NotFoundIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
-	if res, ok := prepContext(r, err); ok {
-		ErrNotFound(w, res)
+	if err != nil {
+		res := prepContext(r)
+		NotFoundWithErr(w, res, err)
 		return true
 	}
 
 	return false
 }
 
+// ServerErrorWithErr sends an error message with "Internal Server Error" as it's
+// status code.
+// It also sends a JSON Object with the error-message "ERR_SERVER_ERROR".
+// The error message will be displayed in the log.
+func ServerErrorWithErr(w http.ResponseWriter, r *http.Request, err error) {
+	data := []byte(`{ "error": "ERR_SERVER_ERROR" }`)
+
+	sendError(w, r, err, http.StatusInternalServerError, data)
+}
+
 // ErrServerError sends an error message with "Internal Server Error" as it's
 // status code.
 // It also sends a JSON Object with the error-message "ERR_SERVER_ERROR".
-// If the context of the request contains an error message, it will be displayed
-// instead of the regular "Forbidden".
+// It uses the default error message for "Internal Server Error".
 func ErrServerError(w http.ResponseWriter, r *http.Request) {
-	data := []byte(`{ "error": "ERR_SERVER_ERROR" }`)
-
-	skip := getSkipFile(r)
-	err := getErr(r, "Internal Server Error")
-	elapsedTime := getTime(r)
-
-	_, filename, line, _ := runtime.Caller(skip)
-	filename = filepath.Base(filename)
-
-	RemoteAddr := tools.GetIP(r)
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusInternalServerError)
-	w.Write(data)
-
-	if !strings.HasPrefix(r.RequestURI, "/status") && TEST_MODE == false {
-		Logger.Printf(
-			"[%7s] [%s; Line %d] [JSON] [%d] [%s] [%v] %s (%s)",
-			r.Method,
-			filename,
-			line,
-			http.StatusInternalServerError,
-			RemoteAddr,
-			elapsedTime,
-			r.RequestURI,
-			err,
-		)
-	}
+	ServerErrorWithErr(w, r, errors.New("Internal Server Error"))
 }
 
 // ServerErrorIfErr send an ERR_SERVER_ERROR to the client IF the passed err is
@@ -209,48 +175,31 @@ func ErrServerError(w http.ResponseWriter, r *http.Request) {
 // If a Response was send, the result will be true to indicate, that no further
 // request handling is necessary.
 func ServerErrorIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
-	if res, ok := prepContext(r, err); ok {
-		ErrServerError(w, res)
+	if err != nil {
+		res := prepContext(r)
+		ServerErrorWithErr(w, res, err)
 		return true
 	}
 
 	return false
 }
 
+// InvalidDataWithErr sends an error message with "Unprocessable Entity" as it's
+// status code.
+// It also sends a JSON Object with the error-message "ERR_INVALID_DATA".
+// The error message will be displayed in the log.
+func InvalidDataWithErr(w http.ResponseWriter, r *http.Request, err error) {
+	data := []byte(`{ "error": "ERR_INVALID_DATA" }`)
+
+	sendError(w, r, err, http.StatusUnprocessableEntity, data)
+}
+
 // ErrInvalidData sends an error message with "Unprocessable Entity" as it's
 // status code.
 // It also sends a JSON Object with the error-message "ERR_INVALID_DATA".
-// If the context of the request contains an error message, it will be displayed
-// instead of the regular "Forbidden".
+// It uses the default error message for "Unprocessable Entity".
 func ErrInvalidData(w http.ResponseWriter, r *http.Request) {
-	data := []byte(`{ "error": "ERR_INVALID_DATA" }`)
-
-	skip := getSkipFile(r)
-	err := getErr(r, "Unprocessable Entity")
-	elapsedTime := getTime(r)
-
-	_, filename, line, _ := runtime.Caller(skip)
-	filename = filepath.Base(filename)
-
-	RemoteAddr := tools.GetIP(r)
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusUnprocessableEntity)
-	w.Write(data)
-
-	if !strings.HasPrefix(r.RequestURI, "/status") && TEST_MODE == false {
-		Logger.Printf(
-			"[%7s] [%s; Line %d] [JSON] [%d] [%s] [%v] %s (%s)",
-			r.Method,
-			filename,
-			line,
-			http.StatusUnprocessableEntity,
-			RemoteAddr,
-			elapsedTime,
-			r.RequestURI,
-			err,
-		)
-	}
+	InvalidDataWithErr(w, r, errors.New("Unprocessable Entity"))
 }
 
 // InvalidDataIfErr send an ERR_INVALID_DATA to the client IF the passed err is
@@ -258,48 +207,31 @@ func ErrInvalidData(w http.ResponseWriter, r *http.Request) {
 // If a Response was send, the result will be true to indicate, that no further
 // request handling is necessary.
 func InvalidDataIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
-	if res, ok := prepContext(r, err); ok {
-		ErrInvalidData(w, res)
+	if err != nil {
+		res := prepContext(r)
+		InvalidDataWithErr(w, res, err)
 		return true
 	}
 
 	return false
 }
 
+// InvalidMediaTypeWithErr sends an error message with "Unsupported Media Type" as
+// it's status code.
+// It also sends a JSON Object with the error-message "ERR_UNSUPPORTED_MEDIA_TYPE".
+// The error message will be displayed in the log.
+func InvalidMediaTypeWithErr(w http.ResponseWriter, r *http.Request, err error) {
+	data := []byte(`{ "error": "ERR_UNSUPPORTED_MEDIA_TYPE" }`)
+
+	sendError(w, r, err, http.StatusUnsupportedMediaType, data)
+}
+
 // ErrInvalidMediaType sends an error message with "Unsupported Media Type" as
 // it's status code.
 // It also sends a JSON Object with the error-message "ERR_UNSUPPORTED_MEDIA_TYPE".
-// If the context of the request contains an error message, it will be displayed
-// instead of the regular "Forbidden".
+// It uses the default error message for "Unsupported Media Type".
 func ErrInvalidMediaType(w http.ResponseWriter, r *http.Request) {
-	data := []byte(`{ "error": "ERR_UNSUPPORTED_MEDIA_TYPE" }`)
-
-	skip := getSkipFile(r)
-	err := getErr(r, "Unsupported Media Type")
-	elapsedTime := getTime(r)
-
-	_, filename, line, _ := runtime.Caller(skip)
-	filename = filepath.Base(filename)
-
-	RemoteAddr := tools.GetIP(r)
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusUnsupportedMediaType)
-	w.Write(data)
-
-	if !strings.HasPrefix(r.RequestURI, "/status") && TEST_MODE == false {
-		Logger.Printf(
-			"[%7s] [%s; Line %d] [JSON] [%d] [%s] [%v] %s (%s)",
-			r.Method,
-			filename,
-			line,
-			http.StatusUnsupportedMediaType,
-			RemoteAddr,
-			elapsedTime,
-			r.RequestURI,
-			err,
-		)
-	}
+	InvalidMediaTypeWithErr(w, r, errors.New("Unsupported Media Type"))
 }
 
 // InvalidMediaTypeIfErr send an ERR_UNSUPPORTED_MEDIA_TYPE to the client IF
@@ -307,47 +239,29 @@ func ErrInvalidMediaType(w http.ResponseWriter, r *http.Request) {
 // context and logged. If a Response was send, the result will be true to
 // indicate, that no further request handling is necessary.
 func InvalidMediaTypeIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
-	if res, ok := prepContext(r, err); ok {
-		ErrInvalidMediaType(w, res)
+	if err != nil {
+		res := prepContext(r)
+		InvalidMediaTypeWithErr(w, res, err)
 		return true
 	}
 
 	return false
 }
 
-// ErrBadRequest sends an error message with "Bad Request" as it's status code.
+// BadRequestWithErr sends an error message with "Bad Request" as it's status code.
 // It also sends a JSON Object with the error-message "ERR_BAD_REQUEST".
-// If the context of the request contains an error message, it will be displayed
-// instead of the regular "Forbidden".
-func ErrBadRequest(w http.ResponseWriter, r *http.Request) {
+// The error message will be displayed in the log.
+func BadRequestWithErr(w http.ResponseWriter, r *http.Request, err error) {
 	data := []byte(`{ "error": "ERR_BAD_REQUEST" }`)
 
-	skip := getSkipFile(r)
-	err := getErr(r, "Bad Request")
-	elapsedTime := getTime(r)
+	sendError(w, r, err, http.StatusBadRequest, data)
+}
 
-	_, filename, line, _ := runtime.Caller(skip)
-	filename = filepath.Base(filename)
-
-	RemoteAddr := tools.GetIP(r)
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusBadRequest)
-	w.Write(data)
-
-	if !strings.HasPrefix(r.RequestURI, "/status") && TEST_MODE == false {
-		Logger.Printf(
-			"[%7s] [%s; Line %d] [JSON] [%d] [%s] [%v] %s (%s)",
-			r.Method,
-			filename,
-			line,
-			http.StatusBadRequest,
-			RemoteAddr,
-			elapsedTime,
-			r.RequestURI,
-			err,
-		)
-	}
+// ErrBadRequest sends an error message with "Bad Request" as it's status code.
+// It also sends a JSON Object with the error-message "ERR_BAD_REQUEST".
+// It uses the default error message for "Bad Request".
+func ErrBadRequest(w http.ResponseWriter, r *http.Request) {
+	BadRequestWithErr(w, r, errors.New("Bad Request"))
 }
 
 // BadRequestIfErr send an ERR_BAD_REQUEST to the client IF the passed err is
@@ -355,8 +269,9 @@ func ErrBadRequest(w http.ResponseWriter, r *http.Request) {
 // If a Response was send, the result will be true to indicate, that no further
 // request handling is necessary.
 func BadRequestIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
-	if res, ok := prepContext(r, err); ok {
-		ErrBadRequest(w, res)
+	if err != nil {
+		res := prepContext(r)
+		BadRequestWithErr(w, res, err)
 		return true
 	}
 
