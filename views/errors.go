@@ -240,16 +240,14 @@ func ServerErrorIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
 	return false
 }
 
-// ErrInvalidData sends an error message with "Unprocessable Entity" as it's
+// InvalidDataWithErr sends an error message with "Unprocessable Entity" as it's
 // status code.
 // It also sends a JSON Object with the error-message "ERR_INVALID_DATA".
-// If the context of the request contains an error message, it will be displayed
-// instead of the regular "Forbidden".
-func ErrInvalidData(w http.ResponseWriter, r *http.Request) {
+// The error message will be displayed in the log.
+func InvalidDataWithErr(w http.ResponseWriter, r *http.Request, err error) {
 	data := []byte(`{ "error": "ERR_INVALID_DATA" }`)
 
 	skip := getSkipFile(r)
-	err := getErr(r, "Unprocessable Entity")
 	elapsedTime := getTime(r)
 
 	_, filename, line, _ := runtime.Caller(skip)
@@ -276,13 +274,23 @@ func ErrInvalidData(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ErrInvalidData sends an error message with "Unprocessable Entity" as it's
+// status code.
+// It also sends a JSON Object with the error-message "ERR_INVALID_DATA".
+// If the context of the request contains an error message, it will be displayed
+// instead of the regular "Forbidden".
+func ErrInvalidData(w http.ResponseWriter, r *http.Request) {
+	InvalidDataWithErr(w, r, errors.New("Invalid Data"))
+}
+
 // InvalidDataIfErr send an ERR_INVALID_DATA to the client IF the passed err is
 // not nil. In this case error will be placed into the context and logged.
 // If a Response was send, the result will be true to indicate, that no further
 // request handling is necessary.
 func InvalidDataIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
-	if res, ok := prepContext(r, err); ok {
-		ErrInvalidData(w, res)
+	if err != nil {
+		prepContext(r, err)
+		InvalidDataWithErr(w, r, err)
 		return true
 	}
 
