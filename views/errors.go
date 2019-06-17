@@ -109,8 +109,7 @@ func AccessDeniedWithErr(w http.ResponseWriter, r *http.Request, err error) {
 
 // ErrAccessDenied sends an error message with "Forbidden" as it's status code.
 // It also sends a JSON Object with the error-message "ERR_FORBIDDEN".
-// If the context of the request contains an error message, it will be displayed
-// instead of the regular "Forbidden".
+// It uses the default error message for "Forbidden".
 func ErrAccessDenied(w http.ResponseWriter, r *http.Request) {
 	AccessDeniedWithErr(w, r, errors.New("Forbidden"))
 }
@@ -220,8 +219,7 @@ func ServerErrorWithErr(w http.ResponseWriter, r *http.Request, err error) {
 // ErrServerError sends an error message with "Internal Server Error" as it's
 // status code.
 // It also sends a JSON Object with the error-message "ERR_SERVER_ERROR".
-// If the context of the request contains an error message, it will be displayed
-// instead of the regular "Forbidden".
+// It uses the default error message for "Internal Server Error".
 func ErrServerError(w http.ResponseWriter, r *http.Request) {
 	ServerErrorWithErr(w, r, errors.New("Internal Server Error"))
 }
@@ -277,8 +275,7 @@ func InvalidDataWithErr(w http.ResponseWriter, r *http.Request, err error) {
 // ErrInvalidData sends an error message with "Unprocessable Entity" as it's
 // status code.
 // It also sends a JSON Object with the error-message "ERR_INVALID_DATA".
-// If the context of the request contains an error message, it will be displayed
-// instead of the regular "Forbidden".
+// It uses the default error message for "Unprocessable Entity".
 func ErrInvalidData(w http.ResponseWriter, r *http.Request) {
 	InvalidDataWithErr(w, r, errors.New("Invalid Data"))
 }
@@ -334,8 +331,7 @@ func InvalidMediaTypeWithErr(w http.ResponseWriter, r *http.Request, err error) 
 // ErrInvalidMediaType sends an error message with "Unsupported Media Type" as
 // it's status code.
 // It also sends a JSON Object with the error-message "ERR_UNSUPPORTED_MEDIA_TYPE".
-// If the context of the request contains an error message, it will be displayed
-// instead of the regular "Forbidden".
+// It uses the default error message for "Unsupported Media Type".
 func ErrInvalidMediaType(w http.ResponseWriter, r *http.Request) {
 	InvalidMediaTypeWithErr(w, r, errors.New("Unsupported Media Type"))
 }
@@ -389,8 +385,7 @@ func BadRequestWithErr(w http.ResponseWriter, r *http.Request, err error) {
 
 // ErrBadRequest sends an error message with "Bad Request" as it's status code.
 // It also sends a JSON Object with the error-message "ERR_BAD_REQUEST".
-// If the context of the request contains an error message, it will be displayed
-// instead of the regular "Forbidden".
+// It uses the default error message for "Bad Request".
 func ErrBadRequest(w http.ResponseWriter, r *http.Request) {
 	BadRequestWithErr(w, r, errors.New("Bad Request"))
 }
