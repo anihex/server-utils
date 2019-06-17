@@ -297,16 +297,14 @@ func InvalidDataIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
 	return false
 }
 
-// ErrInvalidMediaType sends an error message with "Unsupported Media Type" as
+// InvalidMediaTypeWithErr sends an error message with "Unsupported Media Type" as
 // it's status code.
 // It also sends a JSON Object with the error-message "ERR_UNSUPPORTED_MEDIA_TYPE".
-// If the context of the request contains an error message, it will be displayed
-// instead of the regular "Forbidden".
-func ErrInvalidMediaType(w http.ResponseWriter, r *http.Request) {
+// The error message will be displayed in the log.
+func InvalidMediaTypeWithErr(w http.ResponseWriter, r *http.Request, err error) {
 	data := []byte(`{ "error": "ERR_UNSUPPORTED_MEDIA_TYPE" }`)
 
 	skip := getSkipFile(r)
-	err := getErr(r, "Unsupported Media Type")
 	elapsedTime := getTime(r)
 
 	_, filename, line, _ := runtime.Caller(skip)
@@ -333,13 +331,23 @@ func ErrInvalidMediaType(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ErrInvalidMediaType sends an error message with "Unsupported Media Type" as
+// it's status code.
+// It also sends a JSON Object with the error-message "ERR_UNSUPPORTED_MEDIA_TYPE".
+// If the context of the request contains an error message, it will be displayed
+// instead of the regular "Forbidden".
+func ErrInvalidMediaType(w http.ResponseWriter, r *http.Request) {
+	InvalidMediaTypeWithErr(w, r, errors.New("Unsupported Media Type"))
+}
+
 // InvalidMediaTypeIfErr send an ERR_UNSUPPORTED_MEDIA_TYPE to the client IF
 // the passed err is not nil. In this case error will be placed into the
 // context and logged. If a Response was send, the result will be true to
 // indicate, that no further request handling is necessary.
 func InvalidMediaTypeIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
-	if res, ok := prepContext(r, err); ok {
-		ErrInvalidMediaType(w, res)
+	if err != nil {
+		prepContext(r, err)
+		InvalidMediaTypeWithErr(w, r, err)
 		return true
 	}
 
