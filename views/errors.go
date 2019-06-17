@@ -129,15 +129,13 @@ func AccessDeniedIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
 	return false
 }
 
-// ErrNotFound sends an error message with "Not Found" as it's status code.
+// NotFoundWithErr sends an error message with "Not Found" as it's status code.
 // It also sends a JSON Object with the error-message "ERR_NOT_FOUND".
-// If the context of the request contains an error message, it will be displayed
-// instead of the regular "Forbidden".
-func ErrNotFound(w http.ResponseWriter, r *http.Request) {
+// The error message will be displayed in the log.
+func NotFoundWithErr(w http.ResponseWriter, r *http.Request, err error) {
 	data := []byte(`{ "error": "ERR_NOT_FOUND" }`)
 
 	skip := getSkipFile(r)
-	err := getErr(r, "Not Found")
 	elapsedTime := getTime(r)
 
 	_, filename, line, _ := runtime.Caller(skip)
@@ -164,13 +162,21 @@ func ErrNotFound(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ErrNotFound sends an error message with "Not Found" as it's status code.
+// It also sends a JSON Object with the error-message "ERR_NOT_FOUND".
+// It uses the default error message for "Not Found".
+func ErrNotFound(w http.ResponseWriter, r *http.Request) {
+	NotFoundWithErr(w, r, errors.New("Not Found"))
+}
+
 // NotFoundIfErr send an ERR_NOT_FOUND to the client IF the passed err is
 // not nil. In this case error will be placed into the context and logged.
 // If a Response was send, the result will be true to indicate, that no further
 // request handling is necessary.
 func NotFoundIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
-	if res, ok := prepContext(r, err); ok {
-		ErrNotFound(w, res)
+	if err != nil {
+		prepContext(r, err)
+		NotFoundWithErr(w, r, err)
 		return true
 	}
 
