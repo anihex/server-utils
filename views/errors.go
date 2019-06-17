@@ -53,24 +53,14 @@ func getErr(r *http.Request, def string) string {
 }
 
 // preContext prepares the context for later use.
-// It takes a request and an error and checks if the error was nil.
-// If the error is not nil, the error gets stored inside the context and
-// the "skipFile" gets increased by one so that the final views can handle this.
-func prepContext(r *http.Request, err error) (*http.Request, bool) {
-	if err == nil {
-		return nil, false
-	}
-
+// It takes a request and increases the "toSkip" information by 1.
+func prepContext(r *http.Request) *http.Request {
 	skip := getSkipFile(r)
 	res := r.WithContext(
 		context.WithValue(r.Context(), toSkip, skip+1),
 	)
 
-	res = res.WithContext(
-		context.WithValue(res.Context(), gotError, err.Error()),
-	)
-
-	return res, true
+	return res
 }
 
 // AccessDeniedWithErr sends an error message with "Forbidden" as it's
@@ -120,8 +110,8 @@ func ErrAccessDenied(w http.ResponseWriter, r *http.Request) {
 // request handling is necessary.
 func AccessDeniedIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
 	if err != nil {
-		prepContext(r, err)
-		AccessDeniedWithErr(w, r, err)
+		res := prepContext(r)
+		AccessDeniedWithErr(w, res, err)
 		return true
 	}
 
@@ -174,8 +164,8 @@ func ErrNotFound(w http.ResponseWriter, r *http.Request) {
 // request handling is necessary.
 func NotFoundIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
 	if err != nil {
-		prepContext(r, err)
-		NotFoundWithErr(w, r, err)
+		res := prepContext(r)
+		NotFoundWithErr(w, res, err)
 		return true
 	}
 
@@ -230,8 +220,8 @@ func ErrServerError(w http.ResponseWriter, r *http.Request) {
 // request handling is necessary.
 func ServerErrorIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
 	if err != nil {
-		prepContext(r, err)
-		ServerErrorWithErr(w, r, err)
+		res := prepContext(r)
+		ServerErrorWithErr(w, res, err)
 		return true
 	}
 
@@ -286,8 +276,8 @@ func ErrInvalidData(w http.ResponseWriter, r *http.Request) {
 // request handling is necessary.
 func InvalidDataIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
 	if err != nil {
-		prepContext(r, err)
-		InvalidDataWithErr(w, r, err)
+		res := prepContext(r)
+		InvalidDataWithErr(w, res, err)
 		return true
 	}
 
@@ -342,8 +332,8 @@ func ErrInvalidMediaType(w http.ResponseWriter, r *http.Request) {
 // indicate, that no further request handling is necessary.
 func InvalidMediaTypeIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
 	if err != nil {
-		prepContext(r, err)
-		InvalidMediaTypeWithErr(w, r, err)
+		res := prepContext(r)
+		InvalidMediaTypeWithErr(w, res, err)
 		return true
 	}
 
@@ -396,8 +386,8 @@ func ErrBadRequest(w http.ResponseWriter, r *http.Request) {
 // request handling is necessary.
 func BadRequestIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
 	if err != nil {
-		prepContext(r, err)
-		BadRequestWithErr(w, r, err)
+		res := prepContext(r)
+		BadRequestWithErr(w, res, err)
 		return true
 	}
 
