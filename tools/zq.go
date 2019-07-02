@@ -1,3 +1,5 @@
+// +build zmq
+
 package tools
 
 import (
