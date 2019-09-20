@@ -30,4 +30,5 @@ type Cookie interface {
 	GetUint64Array(string) []uint64
 	DeleteValue(string) error
 	Remove(http.ResponseWriter)
+	Store()
 }

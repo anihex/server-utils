@@ -89,6 +89,9 @@ func (d *DummyCookie) DeleteValue(Name string) error {
 // Remove deletes all entries in redis. It also invalidates the http cookie
 func (d *DummyCookie) Remove(w http.ResponseWriter) {}
 
+// Store is a dummy function
+func (d *DummyCookie) Store() {}
+
 // NewDummyCookie creates a new dummy cookie
 func NewDummyCookie(Values map[string]interface{}, SessionID string) CookieFunc {
 	return func(w http.ResponseWriter, r *http.Request, Name string, Conn *redis.Pool) (Cookie, error) {
