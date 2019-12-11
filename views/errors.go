@@ -136,7 +136,9 @@ func UnauthorizedWithErr(w http.ResponseWriter, r *http.Request, err error) {
 // It also sends a JSON Object with the error-message "ERR_UNAUTHORIZED".
 // It uses the default error message for "Unauthorized".
 func ErrUnauthorized(w http.ResponseWriter, r *http.Request) {
-	UnauthorizedWithErr(w, r, errors.New("Unauthorized"))
+	err := errors.New("Unauthorized")
+	res := prepContext(r)
+	AccessDeniedWithErr(w, res, err)
 }
 
 // UnauthorizedIfErr send an ERR_UNAUTHORIZED to the client IF the passed err is
@@ -166,7 +168,9 @@ func NotFoundWithErr(w http.ResponseWriter, r *http.Request, err error) {
 // It also sends a JSON Object with the error-message "ERR_NOT_FOUND".
 // It uses the default error message for "Not Found".
 func ErrNotFound(w http.ResponseWriter, r *http.Request) {
-	NotFoundWithErr(w, r, errors.New("Not Found"))
+	err := errors.New("Not Found")
+	res := prepContext(r)
+	NotFoundWithErr(w, res, err)
 }
 
 // NotFoundIfErr send an ERR_NOT_FOUND to the client IF the passed err is
@@ -198,7 +202,9 @@ func ServerErrorWithErr(w http.ResponseWriter, r *http.Request, err error) {
 // It also sends a JSON Object with the error-message "ERR_SERVER_ERROR".
 // It uses the default error message for "Internal Server Error".
 func ErrServerError(w http.ResponseWriter, r *http.Request) {
-	ServerErrorWithErr(w, r, errors.New("Internal Server Error"))
+	err := errors.New("Internal Server Error")
+	res := prepContext(r)
+	ServerErrorWithErr(w, res, err)
 }
 
 // ServerErrorIfErr send an ERR_SERVER_ERROR to the client IF the passed err is
@@ -215,32 +221,34 @@ func ServerErrorIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
 	return false
 }
 
-// InvalidDataWithErr sends an error message with "Unprocessable Entity" as it's
+// UnprocessableEntityWithErr sends an error message with "Unprocessable Entity" as it's
 // status code.
 // It also sends a JSON Object with the error-message "ERR_INVALID_DATA".
 // The error message will be displayed in the log.
-func InvalidDataWithErr(w http.ResponseWriter, r *http.Request, err error) {
-	data := []byte(`{ "error": "ERR_INVALID_DATA" }`)
+func UnprocessableEntityWithErr(w http.ResponseWriter, r *http.Request, err error) {
+	data := []byte(`{ "error": "ERR_UNPROCESSABLE_ENTITY" }`)
 
 	sendError(w, r, err, http.StatusUnprocessableEntity, data)
 }
 
-// ErrInvalidData sends an error message with "Unprocessable Entity" as it's
+// ErrUnprocessableEntity sends an error message with "Unprocessable Entity" as it's
 // status code.
 // It also sends a JSON Object with the error-message "ERR_INVALID_DATA".
 // It uses the default error message for "Unprocessable Entity".
-func ErrInvalidData(w http.ResponseWriter, r *http.Request) {
-	InvalidDataWithErr(w, r, errors.New("Unprocessable Entity"))
+func ErrUnprocessableEntity(w http.ResponseWriter, r *http.Request) {
+	err := errors.New("Unprocessable Entity")
+	res := prepContext(r)
+	UnprocessableEntityWithErr(w, res, err)
 }
 
-// InvalidDataIfErr send an ERR_INVALID_DATA to the client IF the passed err is
+// UnprocessableEntityIfErr send an ERR_INVALID_DATA to the client IF the passed err is
 // not nil. In this case error will be placed into the context and logged.
 // If a Response was send, the result will be true to indicate, that no further
 // request handling is necessary.
-func InvalidDataIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
+func UnprocessableEntityIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
 	if err != nil {
 		res := prepContext(r)
-		InvalidDataWithErr(w, res, err)
+		UnprocessableEntityWithErr(w, res, err)
 		return true
 	}
 
@@ -262,7 +270,9 @@ func InvalidMediaTypeWithErr(w http.ResponseWriter, r *http.Request, err error) 
 // It also sends a JSON Object with the error-message "ERR_UNSUPPORTED_MEDIA_TYPE".
 // It uses the default error message for "Unsupported Media Type".
 func ErrInvalidMediaType(w http.ResponseWriter, r *http.Request) {
-	InvalidMediaTypeWithErr(w, r, errors.New("Unsupported Media Type"))
+	err := errors.New("Unsupported Media Type")
+	res := prepContext(r)
+	InvalidMediaTypeWithErr(w, res, err)
 }
 
 // InvalidMediaTypeIfErr send an ERR_UNSUPPORTED_MEDIA_TYPE to the client IF
@@ -292,7 +302,9 @@ func BadRequestWithErr(w http.ResponseWriter, r *http.Request, err error) {
 // It also sends a JSON Object with the error-message "ERR_BAD_REQUEST".
 // It uses the default error message for "Bad Request".
 func ErrBadRequest(w http.ResponseWriter, r *http.Request) {
-	BadRequestWithErr(w, r, errors.New("Bad Request"))
+	err := errors.New("Bad Request")
+	res := prepContext(r)
+	BadRequestWithErr(w, res, err)
 }
 
 // BadRequestIfErr send an ERR_BAD_REQUEST to the client IF the passed err is
