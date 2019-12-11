@@ -122,6 +122,37 @@ func AccessDeniedIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
 	return false
 }
 
+// UnauthorizedWithErr sends an error message with "Unauthorized" as it's
+// status code. It also sends a JSON Object with the error-message
+// "ERR_UNAUTHORIZED".
+// The error message will be displayed in the log.
+func UnauthorizedWithErr(w http.ResponseWriter, r *http.Request, err error) {
+	data := []byte(`{ "error": "ERR_UNAUTHORIZED" }`)
+
+	sendError(w, r, err, http.StatusUnauthorized, data)
+}
+
+// ErrUnauthorized sends an error message with "Unauthorized" as it's status code.
+// It also sends a JSON Object with the error-message "ERR_UNAUTHORIZED".
+// It uses the default error message for "Unauthorized".
+func ErrUnauthorized(w http.ResponseWriter, r *http.Request) {
+	UnauthorizedWithErr(w, r, errors.New("Unauthorized"))
+}
+
+// UnauthorizedIfErr send an ERR_UNAUTHORIZED to the client IF the passed err is
+// not nil. In this case error will be placed into the context and logged.
+// If a Response was send, the result will be true to indicate, that no further
+// request handling is necessary.
+func UnauthorizedIfErr(w http.ResponseWriter, r *http.Request, err error) bool {
+	if err != nil {
+		res := prepContext(r)
+		UnauthorizedWithErr(w, res, err)
+		return true
+	}
+
+	return false
+}
+
 // NotFoundWithErr sends an error message with "Not Found" as it's status code.
 // It also sends a JSON Object with the error-message "ERR_NOT_FOUND".
 // The error message will be displayed in the log.
